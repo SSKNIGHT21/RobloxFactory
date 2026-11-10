@@ -113,13 +113,6 @@ def keep_parent(obj, parent):
 def key(obj, frame, prop="location"):
     obj.keyframe_insert(data_path=prop, frame=frame)
 
-def constant_interpolation(obj, prop):
-    if not obj.animation_data or not obj.animation_data.action:
-        return
-    for curve in obj.animation_data.action.fcurves:
-        if curve.data_path == prop:
-            for point in curve.keyframe_points:
-                point.interpolation = "CONSTANT"
 
 # Stage: a compact, colourful kitchen set with a deep background.
 cube("Stage floor", (0, 0, -0.22), (12, 12, 0.42), FLOOR, 0)
@@ -266,7 +259,6 @@ for index, item in enumerate(SCENES):
     text_obj.keyframe_insert(data_path="hide_render", frame=end)
     text_obj.hide_render = True
     text_obj.keyframe_insert(data_path="hide_render", frame=min(scene.frame_end, end + 1))
-    constant_interpolation(text_obj, "hide_render")
     caption_objects.append(text_obj)
 
 # Animate the characters according to each story beat.
@@ -390,14 +382,7 @@ for i in range(12):
     piece.rotation_euler.x += 1.5
     key(piece, scene.frame_end)
 
-# Smoother camera and character motion with eased transitions.
-for obj in (camera, toby, cat, toast, toast_face, button):
-    if obj.animation_data and obj.animation_data.action:
-        for curve in obj.animation_data.action.fcurves:
-            for point in curve.keyframe_points:
-                point.interpolation = "BEZIER"
-                point.handle_left_type = "AUTO_CLAMPED"
-                point.handle_right_type = "AUTO_CLAMPED"
+# Keep default Blender keyframe interpolation for compatibility across Blender 4/5.
 
 scene.frame_set(1)
 print("Rendering story:", STORY.get("title", "RobloxFactory"), "at", FPS, "fps for", DURATION, "seconds")

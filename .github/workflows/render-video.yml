@@ -1,20 +1,37 @@
-name: Render RobloxFactory story
+name: Render RobloxFactory Shorts
 
 on:
   workflow_dispatch:
+    inputs:
+      theme:
+        description: "Optional story theme"
+        required: false
+        type: string
+  schedule:
+    - cron: "30 4,12 * * *"
   push:
     paths:
       - "story.json"
       - "blender/**"
+      - "scripts/**"
       - ".github/workflows/render-video.yml"
 
 permissions:
   contents: read
 
+concurrency:
+  group: robloxfactory-shorts-${ github.ref ${
+  cancel-in-progress: false
+
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
+    env:
+      GEMINI_API_KEY: ${ secrets.GEMINI_API_KEY ${
+      GEMINI_TEXT_MODEL: gemini-3.8-flash
+      GEMINI_TTS_MODEL: gemini-3.1-flash-tts-preview
+      STORY_THEME: ${ github.event.inputs.theme || '' ${
     steps:
       - name: Check out project
         uses: actions/checkout@v4
@@ -24,31 +41,91 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y blender ffmpeg libegl1 libgl1
 
-      - name: Render vertical story
-        run: |
-          mkdir -p output
-          blender -b -t 2 --python blender/render_story.py
-
-      - name: Encode MP4 from rendered frames
-        run: |
-          test -s output/frames/frame_0001.png
-          ffmpeg -y -framerate 24 -i output/frames/frame_%04d.png -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -movflags +faststart output/roblox_story.mp4
-          test -s output/roblox_story.mp4
-
-      - name: Add voiceover if available
+      - name: Check scheduled-run credentials
         shell: bash
         run: |
-          if [ -f audio/audio.wav ]; then
-            ffmpeg -y -i output/roblox_story.mp4 -i audio/audio.wav \
-              -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -shortest output/roblox_story_with_voice.mp4
-            mv output/roblox_story_with_voice.mp4 output/roblox_story.mp4
-          else
-            echo "No audio/audio.wav found; rendered video will be silent."
+          if [[ "$GITHUB_EVENT_NAME" == "schedule" && -z "$GEMINI_API_KEY" ]]; then
+            echo "::error::Add GEMINI_API_KEY in Settings > Secrets and variables > Actions before scheduled story generation can run."
+            exit 1
           fi
 
-      - name: Upload finished video
+      - name: Generate story, narration, and original score
+        shell: bash
+        run: |
+          mkdir -p audio output
+          if [[ -n "$GEMINI_API_KEY" ]]; then
+            python3 scripts/generate_assets.py
+          else
+            echo "No Gemini key: using checked-in sample story for this manual/test render."
+            python3 -c "import runpy; runpy.run_path('scripts/generate_assets.py')['make_original_music']()"
+            if [[ -s audio/audio.wav ]]; then cp audio/audio.wav audio/voiceover.wav; fi
+          fi
+          python3 -m json.tool story.json >/dev/null
+
+      - name: Render animated vertical story
+        run: |
+          mkdir -p output/frames
+          blender -b -t 2 --python blender/render_story.py
+          test -s output/frames/frame_0001.png
+
+      - name: Encode MP4 at 12 fps
+        run: |
+          ffmpeg -y -framerate 12 -i output/frames/frame_%04d.png \
+            -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p \
+            -r 12 -movflags +faststart output/roblox_story_silent.mp4
+          test -s output/roblox_story_silent.mp4
+
+      - name: Mix narration and original background audio
+        shell: bash
+        run: |
+          if [[ ! -s audio/background.wav ]]; then
+            python3 -c "import runpy; runpy.run_path('scripts/generate_assets.py')['make_original_music']()"
+          fi
+          if [[ -s audio/voiceover.wav ]]; then
+            ffmpeg -y -i output/roblox_story_silent.mp4 -i audio/voiceover.wav -i audio/background.wav \
+              -filter_complex "[1:a]aresample=24000,apad,atrim=duration=45,volume=1.0[voice];[2:a]aresample=24000,atrim=duration=45,volume=0.18[bed];[voice][bed]amix=inputs=2:duration=longest:dropout_transition=1,loudnorm=I=-16:TP=-1.5:LRA=11[mix]" \
+              -map 0:v:0 -map "[mix]" -t 45 -c:v copy -c:a aac -b:a 160k \
+              -movflags +faststart output/roblox_story.mp4
+          else
+            ffmpeg -y -i output/roblox_story_silent.mp4 -i audio/background.wav \
+              -map 0:v:0 -map 1:a:0 -t 45 -c:v copy -c:a aac -b:a 128k \
+              -movflags +faststart output/roblox_story.mp4
+          fi
+          test -s output/roblox_story.mp4
+
+      - name: Validate finished Short
+        shell: bash
+        run: |
+          ffprobe -v error -show_entries format=duration,size -show_entries stream=codec_type,codec_name,width,height,r_frame_rate -of json output/roblox_story.mp4 > output/metadata.json
+          cp story.json output/story.json
+          python3 - <<'PY'
+          import json
+          data = json.load(open("output/metadata.json", encoding="utf-8"))
+          duration = float(data["format"]["duration"])
+          video = next(s for s in data["streams"] if s["codec_type"] == "video")
+          audio = next((s for s in data["streams"] if s["codec_type"] == "audio"), None)
+          assert 44.5 <= duration <= 45.5, f"Expected 45s, got {duration:.2f}s"
+          assert video["width"] == 540 and video["height"] == 960, f"Unexpected size: {video}"
+          assert video["r_frame_rate"] == "12/1", f"Unexpected frame rate: {video['r_frame_rate']}"
+          assert audio is not None, "No audio stream was muxed"
+          print(f"VALID: {duration:.2f}s, {video['width']}x{video['height']} at 12fps, audio={audio['codec_name']}")
+          PY
+
+      - name: Create an 8-second preview
+        run: |
+          ffmpeg -y -i output/roblox_story.mp4 -t 8 -vf scale=432:768 \
+            -c:v libx264 -preset veryfast -crf 24 -an -movflags +faststart output/preview.mp4
+          ffmpeg -y -ss 3 -i output/roblox_story.mp4 -frames:v 1 -vf scale=432:768 output/preview.jpg
+
+      - name: Upload finished Short and preview
         uses: actions/upload-artifact@v4
         with:
-          name: roblox-story-video
-          path: output/roblox_story.mp4
+          name: roblox-short-${ github.run_number ${
+          path: |
+            output/roblox_story.mp4
+            output/preview.mp4
+            output/preview.jpg
+            output/story.json
+            output/metadata.json
           if-no-files-found: error
+          retention-days: 7

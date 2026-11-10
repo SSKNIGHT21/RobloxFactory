@@ -20,7 +20,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: robloxfactory-shorts-${ github.ref ${
+  group: robloxfactory-shorts-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -28,10 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 55
     env:
-      GEMINI_API_KEY: ${ secrets.GEMINI_API_KEY ${
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
       GEMINI_TEXT_MODEL: gemini-3.8-flash
       GEMINI_TTS_MODEL: gemini-3.1-flash-tts-preview
-      STORY_THEME: ${ github.event.inputs.theme || '' ${
+      STORY_THEME: ${{ github.event.inputs.theme || '' }}
     steps:
       - name: Check out project
         uses: actions/checkout@v4
@@ -120,7 +120,7 @@ jobs:
       - name: Upload finished Short and preview
         uses: actions/upload-artifact@v4
         with:
-          name: roblox-short-${ github.run_number ${
+          name: roblox-short-${{ github.run_number }}
           path: |
             output/roblox_story.mp4
             output/preview.mp4

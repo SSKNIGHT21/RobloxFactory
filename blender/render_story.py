@@ -31,7 +31,9 @@ for datablocks in (bpy.data.meshes, bpy.data.curves, bpy.data.materials, bpy.dat
             datablocks.remove(block)
 
 scene = bpy.context.scene
-engine_items = bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items\nengine_ids = {item.identifier for item in engine_items}\nscene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engine_ids else "BLENDER_EEVEE"
+engine_items = bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items
+engine_ids = {item.identifier for item in engine_items}
+scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engine_ids else "BLENDER_EEVEE"
 scene.render.resolution_x = 720
 scene.render.resolution_y = 1280
 scene.render.resolution_percentage = 100

@@ -87,7 +87,7 @@ def main():
     captioned = OUTPUT / "video_captioned.mp4"
     if caption_path:
         run(["ffmpeg", "-y", "-i", silent, "-vf",
-             "subtitles=output/captions.srt:force_style='FontName=DejaVu Sans,FontSize=30,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=3,Shadow=1,Alignment=2,MarginV=110'",
+             "subtitles=output/captions.srt:force_style='FontName=DejaVu Sans,FontSize=22,PrimaryColour=&H00FFFFFF,OutlineColour=&H00101010,BorderStyle=1,Outline=2,Shadow=1,Alignment=2,MarginV=90'",
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
              "-an", captioned])
     else:

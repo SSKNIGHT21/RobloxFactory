@@ -230,7 +230,7 @@ shot_map = {
 }
 
 # Caption backing and text stay locked to the camera, well inside the safe area.
-panel = cube("Caption | dark panel", (0, 0, 0), (1.34, 0.38, 0.018), DARK, 0.045)
+panel = cube("Caption | dark panel", (0, 0, 0), (2.42, 0.42, 0.018), DARK, 0.045)
 panel.parent = camera
 panel.location = (0, -0.91, -5.15)
 panel.rotation_euler = (0, 0, 0)

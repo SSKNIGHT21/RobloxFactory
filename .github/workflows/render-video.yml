@@ -7,7 +7,6 @@ on:
       - "clips/**"
       - "audio/**"
       - "story.json"
-      - "scripts/build_ai_short.py"
 
 permissions:
   contents: read

@@ -29,6 +29,12 @@ jobs:
           mkdir -p output
           blender -b -t 2 --python blender/render_story.py
 
+      - name: Encode MP4 from rendered frames
+        run: |
+          test -s output/frames/frame_0001.png
+          ffmpeg -y -framerate 24 -i output/frames/frame_%04d.png -c:v libx264 -preset veryfast -crf 20 -pix_fmt yuv420p -movflags +faststart output/roblox_story.mp4
+          test -s output/roblox_story.mp4
+
       - name: Add voiceover if available
         shell: bash
         run: |

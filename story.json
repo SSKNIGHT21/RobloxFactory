@@ -1,14 +1,53 @@
 {
   "title": "The Boy Who Could Rewind Toast",
   "duration_seconds": 45,
-  "scenes": [
-    {"caption": "Toby's mornings were always the same.", "beat": "morning"},
-    {"caption": "Then his toaster did something impossible.", "beat": "magic"},
-    {"caption": "One button sent the toast backwards in time.", "beat": "rewind"},
-    {"caption": "His curious cat discovered the secret.", "beat": "cat"},
-    {"caption": "A little experiment became a big accident.", "beat": "chaos"},
-    {"caption": "Toby had one chance to fix the timeline.", "beat": "fix"},
-    {"caption": "And breakfast was never boring again.", "beat": "ending"}
+  "narration": "Every morning, Toby made the same breakfast. Toast, juice, and one very curious cat. But today, his toaster blinked with a golden light. Toby pressed its tiny button, and the toast suddenly popped back into the slot. He tried again. Pop. Rewind. Pop. Rewind. His cat, Miso, spotted the glowing button and leapt onto the counter. One accidental paw tap sent toast flying everywhere. Toby rushed to press the button one last time. Everything zipped backwards, the kitchen became quiet, and one perfect slice landed on the plate. Miso claimed it. Toby decided tomorrow would be cereal.",
+  "characters": [
+    "Toby",
+    "Miso"
   ],
-  "characters": ["Toby", "Cat"]
+  "scenes": [
+    {
+      "caption": "Breakfast was always the same",
+      "beat": "morning",
+      "action": "walk",
+      "camera": "wide"
+    },
+    {
+      "caption": "Then the toaster blinked",
+      "beat": "magic",
+      "action": "surprise",
+      "camera": "toaster"
+    },
+    {
+      "caption": "One button rewound time",
+      "beat": "rewind",
+      "action": "point",
+      "camera": "toby"
+    },
+    {
+      "caption": "Miso wanted to investigate",
+      "beat": "cat",
+      "action": "jump",
+      "camera": "cat"
+    },
+    {
+      "caption": "Toast went flying everywhere",
+      "beat": "chaos",
+      "action": "panic",
+      "camera": "action"
+    },
+    {
+      "caption": "Toby had one last chance",
+      "beat": "fix",
+      "action": "fix",
+      "camera": "toby"
+    },
+    {
+      "caption": "Miso won breakfast",
+      "beat": "ending",
+      "action": "celebrate",
+      "camera": "wide"
+    }
+  ]
 }

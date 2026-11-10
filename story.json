@@ -1,0 +1,14 @@
+{
+  "title": "The Boy Who Could Rewind Toast",
+  "duration_seconds": 45,
+  "scenes": [
+    {"caption": "Toby's mornings were always the same.", "beat": "morning"},
+    {"caption": "Then his toaster did something impossible.", "beat": "magic"},
+    {"caption": "One button sent the toast backwards in time.", "beat": "rewind"},
+    {"caption": "His curious cat discovered the secret.", "beat": "cat"},
+    {"caption": "A little experiment became a big accident.", "beat": "chaos"},
+    {"caption": "Toby had one chance to fix the timeline.", "beat": "fix"},
+    {"caption": "And breakfast was never boring again.", "beat": "ending"}
+  ],
+  "characters": ["Toby", "Cat"]
+}

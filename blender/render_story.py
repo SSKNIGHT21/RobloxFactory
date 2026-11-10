@@ -1,5 +1,5 @@
 """
-RobloxFactory: simple vertical story renderer.
+RobloxFactory: fast vertical story renderer.
 Run: blender -b --python blender/render_story.py
 Input: story.json at repository root.
 Optional voice track: audio/audio.wav (mixed into the final MP4 when present).
@@ -8,7 +8,6 @@ import bpy
 import json
 import math
 import os
-from mathutils import Vector
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 STORY_PATH = os.path.join(ROOT, "story.json")
@@ -31,19 +30,30 @@ for datablocks in (bpy.data.meshes, bpy.data.curves, bpy.data.materials, bpy.dat
             datablocks.remove(block)
 
 scene = bpy.context.scene
-engine_items = bpy.types.RenderSettings.bl_rna.properties["engine"].enum_items
-engine_ids = {item.identifier for item in engine_items}
-scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in engine_ids else "BLENDER_EEVEE"
-scene.render.resolution_x = 720
-scene.render.resolution_y = 1280
+
+# Workbench avoids slow software-Eevee rendering on GitHub's CPU-only runners.
+# It keeps the block-built Roblox-inspired look while rendering much faster.
+scene.render.engine = "BLENDER_WORKBENCH"
+scene.display.shading.light = "STUDIO"
+scene.display.shading.studio_light = "paint.sl"
+scene.display.shading.color_type = "MATERIAL"
+scene.display.shading.show_shadows = True
+scene.display.shading.show_cavity = True
+scene.display.shading.cavity_type = "WORLD"
+scene.display.shading.background_type = "WORLD"
+scene.display.shading.background_color = (0.025, 0.035, 0.06)
+
+# Vertical Shorts output. 12 fps is intentional: half the old frame count,
+# still smooth enough for this stylised, story-driven animation.
+scene.render.resolution_x = 540
+scene.render.resolution_y = 960
 scene.render.resolution_percentage = 100
-scene.render.fps = 24
+scene.render.fps = 12
 scene.frame_start = 1
 fps = scene.render.fps
 total_seconds = int(story.get("duration_seconds", 45))
 scene.frame_end = total_seconds * fps
-# Blender 5.x no longer supports FFMPEG as an image_settings.file_format.
-# Render numbered PNG frames, then let FFmpeg encode the MP4 in GitHub Actions.
+
 FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
 os.makedirs(FRAMES_DIR, exist_ok=True)
 scene.render.image_settings.file_format = "PNG"
@@ -54,13 +64,6 @@ scene.render.film_transparent = False
 def material(name, color, roughness=0.8, emission=0.0):
     m = bpy.data.materials.new(name)
     m.diffuse_color = (*color, 1)
-    m.use_nodes = True
-    bsdf = m.node_tree.nodes.get("Principled BSDF")
-    bsdf.inputs["Base Color"].default_value = (*color, 1)
-    bsdf.inputs["Roughness"].default_value = roughness
-    if emission:
-        bsdf.inputs["Emission Color"].default_value = (*color, 1)
-        bsdf.inputs["Emission Strength"].default_value = emission
     return m
 
 blue = material("Toby blue", (0.12, 0.35, 0.85))
@@ -68,7 +71,7 @@ skin = material("Warm skin", (0.92, 0.62, 0.42))
 dark = material("Dark details", (0.035, 0.045, 0.07))
 red = material("Toaster red", (0.8, 0.12, 0.12))
 silver = material("Toaster silver", (0.45, 0.5, 0.58))
-gold = material("Magic gold", (1.0, 0.62, 0.08), emission=1.2)
+gold = material("Magic gold", (1.0, 0.62, 0.08))
 toast_mat = material("Toast", (0.75, 0.42, 0.16))
 cat_mat = material("Cat orange", (0.95, 0.42, 0.08))
 floor_mat = material("Floor", (0.12, 0.16, 0.23))
@@ -84,20 +87,18 @@ def cube(name, loc, scale, mat, bevel=0.08):
     if bevel:
         mod = obj.modifiers.new("Soft block edges", "BEVEL")
         mod.width = bevel
-        mod.segments = 2
-        obj.modifiers.new("Weighted corner normals", "WEIGHTED_NORMAL")
+        mod.segments = 1
     return obj
 
 def sphere(name, loc, scale, mat):
-    bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, location=loc)
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, location=loc)
     obj = bpy.context.object
     obj.name = name
     obj.scale = scale
     obj.data.materials.append(mat)
-    bpy.ops.object.shade_smooth()
     return obj
 
-# Simple block-built Roblox-inspired characters and props.
+# Kitchen set
 cube("Kitchen floor", (0, 0, -0.25), (12, 12, 0.5), floor_mat, 0)
 cube("Back wall", (0, 3.5, 3), (12, 0.3, 6), dark, 0)
 
@@ -125,38 +126,30 @@ for x in (1.82, 2.18):
 for x in (1.91, 2.09):
     sphere("Cat eye", (x, -0.43, 1.22), (0.035, 0.025, 0.045), dark)
 
-# Lighting
-world = bpy.data.worlds.new("Story world") if not bpy.data.worlds else bpy.data.worlds[0]
-scene.world = world
-world.color = (0.12, 0.12, 0.12)
-bpy.ops.object.light_add(type="AREA", location=(0, -4, 7))
-key = bpy.context.object
-key.name = "Large softbox"
-key.data.energy = 1500
-key.data.shape = "DISK"
-key.data.size = 7
-
-# Camera faces the kitchen set in portrait format.
+# Camera
 bpy.ops.object.camera_add(location=(0, -10, 3.1))
 camera = bpy.context.object
 camera.name = "Story camera"
 camera.data.lens = 48
 camera.rotation_euler = (math.radians(78), 0, 0)
 scene.camera = camera
+camera.location = (0, -10.8, 3.2)
+camera.keyframe_insert(data_path="location", frame=1)
+camera.location = (0, -9.7, 3.0)
+camera.keyframe_insert(data_path="location", frame=scene.frame_end)
 
-# Caption text objects: one per beat, shown only during its segment.
+# Captions, one at a time.
 segment = max(1, scene.frame_end // len(scenes))
 for i, item in enumerate(scenes):
     curve = bpy.data.curves.new("Caption", "FONT")
     curve.body = item.get("caption", "")
     curve.align_x = "CENTER"
     curve.size = 0.42
-    curve.extrude = 0.002
     text_obj = bpy.data.objects.new("Caption %02d" % (i + 1), curve)
     scene.collection.objects.link(text_obj)
     text_obj.location = (0, -1.1, 4.35)
     text_obj.rotation_euler = (math.radians(90), 0, 0)
-    curve.materials.append(material("Caption material %02d" % i, (1, 1, 1), emission=0.7))
+    curve.materials.append(material("Caption material %02d" % i, (1, 1, 1)))
     start = i * segment + 1
     end = scene.frame_end if i == len(scenes) - 1 else (i + 1) * segment
     text_obj.hide_render = True
@@ -167,15 +160,12 @@ for i, item in enumerate(scenes):
     text_obj.hide_render = True
     text_obj.keyframe_insert(data_path="hide_render", frame=min(scene.frame_end, end + 1))
 
-# Gentle camera push-in and toaster glow pulse.
-camera.location = (0, -10.8, 3.2)
-camera.keyframe_insert(data_path="location", frame=1)
-camera.location = (0, -9.7, 3.0)
-camera.keyframe_insert(data_path="location", frame=scene.frame_end)
-for frame in range(1, scene.frame_end + 1, 24):
-    glow = bpy.data.objects.get("Magic glow")
-    if glow:
-        glow.scale = (0.15 + 0.05 * (1 + math.sin(frame / 8)), 0.08, 0.15 + 0.05 * (1 + math.sin(frame / 8)))
+# Animate the magic glow gently.
+glow = bpy.data.objects.get("Magic glow")
+if glow:
+    for frame in range(1, scene.frame_end + 1, 12):
+        pulse = 0.15 + 0.05 * (1 + math.sin(frame / 4))
+        glow.scale = (pulse, 0.08, pulse)
         glow.keyframe_insert(data_path="scale", frame=frame)
 
 scene.frame_set(1)

@@ -1,30 +1,39 @@
-# RobloxFactory
+# RobloxFactory Shorts
 
-A starter pipeline for turning a short, scene-based story into a vertical Roblox-inspired 3D video.
+A GitHub Actions pipeline for creating vertical, Roblox-inspired story Shorts.
 
-## Project files
+## What it does
 
-- `story.json` — story title, duration, and scene captions.
-- `blender/render_story.py` — builds a simple block-style kitchen scene and renders a 720 × 1280 MP4.
-- `.github/workflows/render-video.yml` — GitHub Actions workflow that renders the video and uploads it as an artifact.
+- Uses Gemini to generate an original seven-beat story and spoken narration when `GEMINI_API_KEY` is configured.
+- Uses Blender to build a block-style kitchen, Toby and Miso characters, animated acting, story props, camera cuts and on-screen captions.
+- Generates an original, simple background music bed and scene-transition chimes.
+- Uses FFmpeg to combine the animation and audio into a 45-second, 540 × 960, 12 fps MP4.
+- Validates video duration, dimensions, frame rate and the presence of an audio track.
+- Uploads the full Short plus an 8-second preview and preview image as a GitHub Actions artifact.
 
-## Run a render
+## One-time setup for Gemini
 
-1. Install Blender and FFmpeg on a computer.
-2. From the repository root, run:
+1. Open **Settings → Secrets and variables → Actions** in this repository.
+2. Choose **New repository secret**.
+3. Name it exactly `GEMINI_API_KEY` and add your Gemini API key as the secret value.
+4. Never paste the key into chat, source code, or a public issue.
 
-   ```bash
-   blender -b --python blender/render_story.py
-   ```
+Without this secret, manual test renders use the checked-in sample story and generated background music. Scheduled story generation requires the secret and stops with a clear error if it is missing.
 
-3. The video is written to `output/roblox_story.mp4`.
+## Run and schedule
 
-You can also open the **Actions** tab on GitHub and run **Render RobloxFactory story**. The workflow runs automatically when the story or renderer files change. Download the `roblox-story-video` artifact from a completed run.
+- Open **Actions → Render RobloxFactory Shorts → Run workflow** to start one Short. An optional theme can be supplied.
+- The scheduled workflow is set for **10:00 AM and 6:00 PM India time** (04:30 and 12:30 UTC).
+- After a successful run, open its **Artifacts** section and download `roblox-short-<run number>`.
+- The ZIP includes `roblox_story.mp4`, `preview.mp4`, `preview.jpg`, `story.json`, and `metadata.json`.
 
-## Voiceover
+## Files
 
-If a voice track is available, place it at `audio/audio.wav` before rendering. The workflow will mix it into the MP4. If that file is absent, the render will be silent.
+- `story.json` — current sample story and scene directions.
+- `scripts/generate_assets.py` — Gemini story and voiceover generation plus original audio bed.
+- `blender/render_story.py` — character/set construction and animation.
+- `.github/workflows/render-video.yml` — scheduled build, validation and artifact upload.
 
-## Current scope
+## Current limits
 
-This is the first working render scaffold, not yet a complete daily video factory. It creates a basic block-built scene with captions and a camera move. Automated story generation, fetching the real voice file from Make, richer scene-by-scene animation, and scheduled two-videos-per-day production still need to be connected.
+This project produces review-ready video artifacts; it does **not** upload to YouTube automatically. A human should review the preview and full Short before publishing. The visuals are a procedural Roblox-inspired Blender animation, not a recreation of another channel's exact assets or style. Scheduled Gemini generation is not fully ready until the repository secret above has been added and a scheduled run succeeds.

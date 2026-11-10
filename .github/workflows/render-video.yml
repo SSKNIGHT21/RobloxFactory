@@ -1,0 +1,48 @@
+name: Render RobloxFactory story
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "story.json"
+      - "blender/**"
+      - ".github/workflows/render-video.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out project
+        uses: actions/checkout@v4
+
+      - name: Install Blender and FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y blender ffmpeg
+
+      - name: Render vertical story
+        run: |
+          mkdir -p output
+          blender -b -t 2 --python blender/render_story.py
+
+      - name: Add voiceover if available
+        shell: bash
+        run: |
+          if [ -f audio/audio.wav ]; then
+            ffmpeg -y -i output/roblox_story.mp4 -i audio/audio.wav \
+              -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -shortest output/roblox_story_with_voice.mp4
+            mv output/roblox_story_with_voice.mp4 output/roblox_story.mp4
+          else
+            echo "No audio/audio.wav found; rendered video will be silent."
+          fi
+
+      - name: Upload finished video
+        uses: actions/upload-artifact@v4
+        with:
+          name: roblox-story-video
+          path: output/roblox_story.mp4
+          if-no-files-found: error

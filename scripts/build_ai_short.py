@@ -71,8 +71,9 @@ def main():
         run([
             "ffmpeg", "-y", "-stream_loop", "-1", "-i", source,
             "-t", str(CLIP_SECONDS),
-            "-vf", f"fps={FPS},scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},setsar=1",
-            "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+            "-filter_complex",
+            f"[0:v]split=2[bg][fg];[bg]scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=increase,crop={WIDTH}:{HEIGHT},boxblur=18:1[background];[fg]scale={WIDTH}:{HEIGHT}:force_original_aspect_ratio=decrease[foreground];[background][foreground]overlay=(W-w)/2:(H-h)/2,fps={FPS},setsar=1[vout]",
+            "-map", "[vout]", "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
             "-pix_fmt", "yuv420p", "-r", str(FPS), target
         ])
         normalized.append(target)

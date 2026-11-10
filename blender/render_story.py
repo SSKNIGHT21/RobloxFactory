@@ -42,11 +42,13 @@ scene.frame_start = 1
 fps = scene.render.fps
 total_seconds = int(story.get("duration_seconds", 45))
 scene.frame_end = total_seconds * fps
-scene.render.image_settings.file_format = "FFMPEG"
-scene.render.ffmpeg.format = "MPEG4"
-scene.render.ffmpeg.codec = "H264"
-scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
-scene.render.filepath = OUTPUT_VIDEO
+# Blender 5.x no longer supports FFMPEG as an image_settings.file_format.
+# Render numbered PNG frames, then let FFmpeg encode the MP4 in GitHub Actions.
+FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
+os.makedirs(FRAMES_DIR, exist_ok=True)
+scene.render.image_settings.file_format = "PNG"
+scene.render.image_settings.color_mode = "RGB"
+scene.render.filepath = os.path.join(FRAMES_DIR, "frame_")
 scene.render.film_transparent = False
 
 def material(name, color, roughness=0.8, emission=0.0):
@@ -177,7 +179,7 @@ for frame in range(1, scene.frame_end + 1, 24):
         glow.keyframe_insert(data_path="scale", frame=frame)
 
 scene.frame_set(1)
-scene.render.filepath = OUTPUT_VIDEO
+scene.render.filepath = os.path.join(FRAMES_DIR, "frame_")
 print("Rendering:", story.get("title", "RobloxFactory story"), "to", OUTPUT_VIDEO)
 bpy.ops.render.render(animation=True)
 print("Render complete:", OUTPUT_VIDEO)
